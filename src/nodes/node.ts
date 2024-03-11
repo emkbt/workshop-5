@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import express from "express";
 import { BASE_NODE_PORT } from "../config";
-import { Value } from "../types";
+import { NodeState, Value } from "../types";
 
 export async function node(
   nodeId: number, // the ID of the node
@@ -37,9 +37,16 @@ export async function node(
   // this route is used to stop the consensus algorithm
   // node.get("/stop", async (req, res) => {});
 
-  // TODO implement this
-  // get the current state of a node
-  // node.get("/getState", (req, res) => {});
+  // This route allows retrieving the current state of the node
+  node.get("/getState", (req, res) => {
+    const currentState: NodeState = {
+      killed: false,
+      x: initialValue,
+      decided: null,
+      k: null,
+    };
+    res.json(currentState);
+  });
 
   // start the server
   const server = node.listen(BASE_NODE_PORT + nodeId, async () => {
