@@ -1,39 +1,23 @@
 import bodyParser from "body-parser";
 import express from "express";
 import { BASE_NODE_PORT } from "../config";
-import { Value, NodeState } from "../types";
 import { delay } from "../utils";
+import { Value, NodeState } from "../types";
 
-/**
- * Starts a node in the network for the consensus algorithm.
- * @param {number} nodeId - The ID of the node.
- * @param {number} N - Total number of nodes in the network.
- * @param {number} F - Number of faulty nodes in the network.
- * @param {Value} initialValue - Initial value of the node.
- * @param {boolean} isFaulty - True if the node is faulty, false otherwise.
- * @param {Function} nodesAreReady - Function to check if all nodes are ready to receive requests.
- * @param {Function} setNodeIsReady - Function to call when the node is started and ready to receive requests.
- * @returns {Express.Application} The Express application instance for the node.
- */
 export async function node(
-  nodeId: number,
-  N: number,
-  F: number,
-  initialValue: Value,
-  isFaulty: boolean,
-  nodesAreReady: () => boolean,
-  setNodeIsReady: (index: number) => void
+  nodeId: number, // // the ID of the node
+  N: number,  // total number of nodes in the network
+  F: number,  // number of faulty nodes in the network
+  initialValue: Value,  // initial value of the node
+  isFaulty: boolean,  // true if the node is faulty, false otherwise
+  nodesAreReady: () => boolean, // used to know if all nodes are ready to receive requests
+  setNodeIsReady: (index: number) => void // this should be called when the node is started and ready to receive requests
 ) {
   const node = express();
   node.use(express.json());
   node.use(bodyParser.json());
 
-  // Initialize node state
-  let currentNodeState: NodeState = { killed: false, x: null, decided: null, k: null };
-  let proposals: Map<number, Value[]> = new Map();
-  let votes: Map<number, Value[]> = new Map();
-
-  // Route to retrieve the current status of the node
+  // this route allows retrieving the current status of the node
   node.get("/status", (req, res) => {
     if (isFaulty) {
       res.status(500).send("faulty");
@@ -42,8 +26,13 @@ export async function node(
     }
   });
 
-  // Route to receive messages from other nodes
-  node.post("/message", async (req, res) => {
+  // Initialize node state
+  let currentNodeState: NodeState = { killed: false, x: null, decided: null, k: null };
+  let proposals: Map<number, Value[]> = new Map();
+  let votes: Map<number, Value[]> = new Map();
+
+  // this route allows the node to receive messages from other nodes
+  node.post("/message", (req, res) => {
     let { k, x, messageType } = req.body;
     if (!isFaulty && !currentNodeState.killed) {
       if (messageType == "propose") {
@@ -116,7 +105,7 @@ export async function node(
     res.status(200).send("Message received and processed.");
   });
 
-  // Route to start the consensus algorithm
+  // this route is used to start the consensus algorithm
   node.get("/start", async (req, res) => {
     while (!nodesAreReady()) {
       await delay(5);
@@ -144,13 +133,13 @@ export async function node(
     res.status(200).send("Consensus algorithm started.");
   });
 
-  // Route to stop the consensus algorithm
+  // this route is used to stop the consensus algorithm
   node.get("/stop", async (req, res) => {
     currentNodeState.killed = true;
     res.status(200).send("killed");
   });
 
-  // Route to retrieve the current state of the node
+  // get the current state of a node
   node.get("/getState", (req, res) => {
     res.status(200).send({
       killed: currentNodeState.killed,
@@ -160,10 +149,13 @@ export async function node(
     });
   });
 
-  // Start the server
+  // start the server
   const server = node.listen(BASE_NODE_PORT + nodeId, async () => {
-    console.log(`Node ${nodeId} is listening on port ${BASE_NODE_PORT + nodeId}`);
-    // The node is ready
+    console.log(
+      `Node ${nodeId} is listening on port ${BASE_NODE_PORT + nodeId}`
+    );
+
+    // the node is ready
     setNodeIsReady(nodeId);
   });
 
